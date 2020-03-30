@@ -1,5 +1,6 @@
 EXTRA_DIST = \
 	afs-check.m4		\
+	ax_execinfo.m4		\
 	ax_pthread.m4		\
 	cnid-backend.m4		\
 	config-checks.m4	\

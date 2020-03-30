@@ -29,6 +29,10 @@ libutil_la_CFLAGS = \
 	-D_PATH_AFPDUAMPATH='"$(UAMS_PATH)/"' \
 	-D_PATH_STATEDIR='"$(localstatedir)/netatalk/"'
 
+if HAVE_LIBUNWIND
+libutil_la_LDFLAGS = @UNWIND_LIBS@
+endif
+
 if HAVE_ATFUNCS
 libutil_la_SOURCES += ftw.c
 endif

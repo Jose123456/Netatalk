@@ -30,10 +30,15 @@
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
-#ifdef HAVE_BACKTRACE_SYMBOLS
-#include <execinfo.h>
-#endif
 #include <atalk/logger.h>
+#include <atalk/util.h>
+
+#ifdef HAVE_LIBUNWIND_H
+#define UNW_LOCAL_ONLY
+#include <libunwind.h>
+#elif HAVE_BACKTRACE
+#include <execinfo.h>
+#endif /* HAVE_LIBUNWIND_H */
 
 #ifndef SIGNAL_CAST
 #define SIGNAL_CAST (void (*)(int))
@@ -84,20 +89,43 @@ static void (*CatchSignal(int signum,void (*handler)(int )))(int)
 
 void netatalk_panic(const char *why)
 {
-#ifdef HAVE_BACKTRACE_SYMBOLS
+	LOG(log_severe, logtype_default, "PANIC: %s", why);
+#ifdef HAVE_LIBUNWIND_H
+	unw_cursor_t cursor;
+	unw_context_t uc;
+	unw_word_t ip, sp, off;
+	char symbol[256] = "<unknown>";
+	char *name = symbol;
+
+	unw_getcontext(&uc);
+	unw_init_local(&cursor, &uc);
+
+	LOG(log_severe, logtype_default, "BACKTRACE:");
+
+	int count = 0;
+	while (unw_step(&cursor) > 0) {
+		unw_get_reg(&cursor, UNW_REG_IP, &ip);
+		unw_get_reg(&cursor, UNW_REG_SP, &sp);
+
+		if (!unw_get_proc_name(&cursor, symbol, sizeof(symbol), &off)) {
+			name = symbol;
+		}
+		LOG(log_severe, logtype_default,
+			" #%i ip = %lx, sp = %lx, proc = %s\n", count++, (long) ip, (long) sp, name);
+	}
+#elif HAVE_BACKTRACE
 	void *backtrace_stack[BACKTRACE_STACK_SIZE];
-	size_t backtrace_size;
+	backtrace_size_t backtrace_size;
 	char **backtrace_strings;
 
 	/* get the backtrace (stack frames) */
-	backtrace_size = backtrace(backtrace_stack,BACKTRACE_STACK_SIZE);
+	backtrace_size = backtrace(backtrace_stack, BACKTRACE_STACK_SIZE);
 	backtrace_strings = backtrace_symbols(backtrace_stack, backtrace_size);
 
-	LOG(log_severe, logtype_default, "PANIC: %s", why);
 	LOG(log_severe, logtype_default, "BACKTRACE: %d stack frames:", backtrace_size);
 	
 	if (backtrace_strings) {
-		size_t i;
+		backtrace_size_t i;
 
 		for (i = 0; i < backtrace_size; i++)
 			LOG(log_severe, logtype_default, " #%u %s", i, backtrace_strings[i]);

@@ -65,7 +65,7 @@ if test x"$libltdl_cv_need_uscore" = xyes; then
     AC_DEFINE(DLSYM_PREPEND_UNDERSCORE, 1, [BSD compatibility macro])
 fi
 
-dnl Special hecks
+dnl Special checks
 ac_neta_haveatfuncs=yes
 AC_CHECK_FUNCS(openat renameat fstatat unlinkat, , ac_neta_haveatfuncs=no)
 if test x"$ac_neta_haveatfuncs" = x"yes" ; then
@@ -74,8 +74,8 @@ if test x"$ac_neta_haveatfuncs" = x"yes" ; then
 fi
 AC_CHECK_MEMBERS(struct tm.tm_gmtoff,,, [#include <time.h>])
 
-dnl these tests have been comfirmed to be needed in 2011
-AC_CHECK_FUNCS(backtrace_symbols dirfd getusershell pread pwrite pselect)
+dnl these tests have been confirmed to be needed in 2011
+AC_CHECK_FUNCS(dirfd getusershell pread pwrite pselect)
 AC_CHECK_FUNCS(setlinebuf strlcat strlcpy strnlen mempcpy vasprintf asprintf)
 AC_CHECK_FUNCS(mmap utime getpagesize) dnl needed by tbd
 
@@ -83,6 +83,14 @@ dnl search for necessary libraries
 AC_SEARCH_LIBS(gethostbyname, nsl)
 AC_SEARCH_LIBS(connect, socket)
 AC_CHECK_FUNCS(getifaddrs) dnl comes after gethostbyname and connect so it picks up the libs
+
+dnl For backtraces
+AC_CHECK_HEADERS([libunwind.h], [ac_cv_have_libunwind_h=1], [AX_EXECINFO])
+if test x"$ac_cv_have_libunwind_h" = x"1"; then
+    AC_SUBST([UNWIND_LIBS], [-lunwind])
+fi
+AM_CONDITIONAL([HAVE_LIBUNWIND], [test x"$ac_cv_have_libunwind_h" = x"1"])
+AC_CHECK_FUNCS([sigaction])
 
 AX_PTHREAD(, [AC_MSG_ERROR([missing pthread_sigmask])])
 
